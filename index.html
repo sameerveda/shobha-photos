@@ -5,14 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
   </head>
+  <style>
+    .secrets-list {
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
   <body>
     <div x-data="root">
-      <label style="border: 1px solid gray; padding: 0.25rem">
-        Load Secrets <input type="file" @change="loadSecrets" accept=".json" />
-      </label>
-      <p x-show="secrets">
-        <pre><code x-text="JSON.stringify(secrets, null, 2)"></code></pre>
-      </p>
+      <div style="border: 1px solid gray; padding: 0.25rem">
+        <label style="border: 1px solid gray; padding: 0.25rem">
+          Load Secrets
+          <input type="file" @change="loadSecrets" accept=".json" />
+        </label>
+        <table x-show="secrets" class="secrets-list">
+          <tbody>
+            <tr>
+              <td><label for="id24">client_id </label></td>
+              <td><input id="id24" type="text" x-model="client_id" /></td>
+            </tr>
+            <tr>
+              <td><label for="id28">scope</label></td>
+              <td><input id="id28" type="text" x-model="scope" /></td>
+            </tr>
+            <tr>
+              <td><label for="id32">DeveloperKey</label></td>
+              <td><input id="id32" type="text" x-model="DeveloperKey" /></td>
+            </tr>
+            <tr>
+              <td><label for="id36">VIewID</label></td>
+              <td>
+                <select id="id36" x-model="viewId">
+                  <template x-for="id in viewIds">
+                    <option x-text="id"></option>
+                  </template>
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <p x-show="secrets">
         <button x-show="!token" @click="login">Login</button>
@@ -33,18 +65,38 @@
       Alpine.data("root", () => ({
         token: "",
         secrets: null,
+        scope: null,
+        client_id: null,
+        DeveloperKey: null,
+        viewIds: [],
+        viewId: "photos",
         init() {
-          if(localStorage.getItem('SECRETS')) this.secrets = JSON.parse(localStorage.getItem('SECRETS')); 
+          this.setSecrets(localStorage.getItem("SECRETS"));
+          this.initViewIds();
+        },
+        initViewIds(count = 1) {
+          if (count > 10) throw new Error("failed initViewIds");
+
+          if (!window.google?.picker?.ViewId)
+            requestAnimationFrame(() => this.initViewIds(count + 1));
+          else this.viewIds = Object.values(google.picker.ViewId);
         },
         loadSecrets(event) {
           if (!event.target.files[0]) return;
 
           const fs = new FileReader();
-          fs.onloadend = () => {
-            this.secrets = JSON.parse(fs.result);
-            localStorage.setItem('SECRETS', fs.result);
-          };
+          fs.onloadend = () => this.setSecrets(fs.result);
           fs.readAsText(event.target.files[0]);
+        },
+        setSecrets(value) {
+          if (!value) return;
+
+          this.secrets = JSON.parse(value);
+          this.client_id = this.secrets.client_id;
+          this.scope = this.secrets.scope;
+          this.DeveloperKey = this.secrets.DeveloperKey;
+
+          localStorage.setItem("SECRETS", value);
         },
         login() {
           // Replace with your client ID and required scopes.
@@ -60,7 +112,7 @@
         showPicker() {
           // Replace with your API key and App ID.
           const picker = new google.picker.PickerBuilder()
-            .addView(google.picker.ViewId.DOCS)
+            .addView(this.viewId)
             .setOAuthToken(this.token.access_token)
             .setDeveloperKey(this.secrets.DeveloperKey)
             .setCallback(console.log)
