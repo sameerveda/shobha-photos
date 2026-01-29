@@ -29,7 +29,7 @@
             .initTokenClient({
               client_id:
                 "318612144352-t9sv4rll4ju3gujev9hc3ff5tnou1emq.apps.googleusercontent.com",
-              scope: "profile",
+              scope: "profile https://www.googleapis.com/auth/photospicker.mediaitems.readonly",
               callback: (token) => ((this.token = token), console.log(token)),
             })
             .requestAccessToken();
