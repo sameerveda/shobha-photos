@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div x-data="root">
+      <button x-show="!token" @click="login">Login</button>
+      <button x-show="token" @click="showPicker">Show Picker</button>
+    </div>
+
+    <script>
+      // Use the API Loader script to load google.picker.
+      function onApiLoad() {
+        gapi.load("picker", () => console.log("picker loaded"));
+      }
+    </script>
+
+    <script type="module">
+      import Alpine from "https://unpkg.com/alpinejs@3.15.5/dist/module.esm.min.js";
+
+      Alpine.data("root", () => ({
+        token: "",
+        login() {
+          // Replace with your client ID and required scopes.
+          google.accounts.oauth2
+            .initTokenClient({
+              client_id:
+                "318612144352-t9sv4rll4ju3gujev9hc3ff5tnou1emq.apps.googleusercontent.com",
+              scope: "profile",
+              callback: (token) => ((this.token = token), console.log(token)),
+            })
+            .requestAccessToken();
+        },
+
+        showPicker() {
+          // Replace with your API key and App ID.
+          const picker = new google.picker.PickerBuilder()
+            .addView(google.picker.ViewId.DOCS)
+            .setOAuthToken(this.token.access_token)
+            .setDeveloperKey("AIzaSyDT_ze_OXlRr0dPAk410iP5bok4T-0Dz7g")
+            .setCallback(console.log)
+            .build();
+
+          picker.setVisible(true);
+        },
+      }));
+
+      Alpine.start();
+    </script>
+
+    <script
+      async
+      defer
+      src="https://apis.google.com/js/api.js"
+      onload="onApiLoad()"
+    ></script>
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
+  </body>
+</html>
