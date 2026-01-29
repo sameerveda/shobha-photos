@@ -7,8 +7,17 @@
   </head>
   <body>
     <div x-data="root">
-      <button x-show="!token" @click="login">Login</button>
-      <button x-show="token" @click="showPicker">Show Picker</button>
+      <label style="border: 1px solid gray; padding: 0.25rem">
+        Load Secrets <input type="file" @change="loadSecrets" accept=".json" />
+      </label>
+      <p x-show="secrets">
+        <pre><code x-text="JSON.stringify(secrets, null, 2)"></code></pre>
+      </p>
+
+      <p x-show="secrets">
+        <button x-show="!token" @click="login">Login</button>
+        <button x-show="token" @click="showPicker">Show Picker</button>
+      </p>
     </div>
 
     <script>
@@ -23,13 +32,26 @@
 
       Alpine.data("root", () => ({
         token: "",
+        secrets: null,
+        init() {
+          if(localStorage.getItem('SECRETS')) this.secrets = JSON.parse(localStorage.getItem('SECRETS')); 
+        },
+        loadSecrets(event) {
+          if (!event.target.files[0]) return;
+
+          const fs = new FileReader();
+          fs.onloadend = () => {
+            this.secrets = JSON.parse(fs.result);
+            localStorage.setItem('SECRETS', fs.result);
+          };
+          fs.readAsText(event.target.files[0]);
+        },
         login() {
           // Replace with your client ID and required scopes.
           google.accounts.oauth2
             .initTokenClient({
-              client_id:
-                "318612144352-t9sv4rll4ju3gujev9hc3ff5tnou1emq.apps.googleusercontent.com",
-              scope: "profile https://www.googleapis.com/auth/photospicker.mediaitems.readonly",
+              client_id: this.secrets.client_id,
+              scope: this.secrets.scope,
               callback: (token) => ((this.token = token), console.log(token)),
             })
             .requestAccessToken();
@@ -40,7 +62,7 @@
           const picker = new google.picker.PickerBuilder()
             .addView(google.picker.ViewId.DOCS)
             .setOAuthToken(this.token.access_token)
-            .setDeveloperKey("AIzaSyDT_ze_OXlRr0dPAk410iP5bok4T-0Dz7g")
+            .setDeveloperKey(this.secrets.DeveloperKey)
             .setCallback(console.log)
             .build();
 
