@@ -9,6 +9,16 @@
     .secrets-list {
       display: flex;
       flex-direction: column;
+      padding: 0.5rem;
+    }
+
+    .secrets-list tr td:nth-child(even) {
+      width: 99%;
+      white-space: nowrap;
+    }
+
+    .secrets-list textarea {
+      width: 100%;
     }
   </style>
   <body>
@@ -18,19 +28,40 @@
           Load Secrets
           <input type="file" @change="loadSecrets" accept=".json" />
         </label>
-        <table x-show="secrets" class="secrets-list">
+        <table class="secrets-list">
           <tbody>
             <tr>
               <td><label for="id24">client_id </label></td>
-              <td><input id="id24" type="text" x-model="client_id" /></td>
+              <td>
+                <textarea
+                  rows="2"
+                  id="id24"
+                  type="text"
+                  x-model="client_id"
+                ></textarea>
+              </td>
             </tr>
             <tr>
               <td><label for="id28">scope</label></td>
-              <td><input id="id28" type="text" x-model="scope" /></td>
+              <td>
+                <textarea
+                  rows="2"
+                  id="id28"
+                  type="text"
+                  x-model="scope"
+                ></textarea>
+              </td>
             </tr>
             <tr>
               <td><label for="id32">DeveloperKey</label></td>
-              <td><input id="id32" type="text" x-model="DeveloperKey" /></td>
+              <td>
+                <textarea
+                  rows="2"
+                  id="id32"
+                  type="text"
+                  x-model="DeveloperKey"
+                ></textarea>
+              </td>
             </tr>
             <tr>
               <td><label for="id36">VIewID</label></td>
@@ -46,7 +77,7 @@
         </table>
       </div>
 
-      <p x-show="secrets">
+      <p>
         <button x-show="!token" @click="login">Login</button>
         <button x-show="token" @click="showPicker">Show Picker</button>
       </p>
@@ -62,17 +93,49 @@
     <script type="module">
       import Alpine from "https://unpkg.com/alpinejs@3.15.5/dist/module.esm.min.js";
 
+      function validate(state) {
+        for (const k in state) {
+          const element = object[k];
+
+          if (!state?.trim()) {
+            alert(`${k} is required`);
+            return false;
+          }
+        }
+      }
+
+      const SECRETS_SAVE_KEY = "SECRETS";
+      const omitFields = new Set(["token", "viewIds"]);
+      let version = 1;
+
       Alpine.data("root", () => ({
         token: "",
-        secrets: null,
         scope: null,
         client_id: null,
         DeveloperKey: null,
         viewIds: [],
         viewId: "photos",
+        get secrets() {
+          return Object.freeze({
+            scope: this.scope?.trim(),
+            client_id: this.client_id.trim(),
+            DeveloperKey: this.DeveloperKey.trim(),
+            viewId: this.viewId.trim(),
+          });
+        },
         init() {
-          this.setSecrets(localStorage.getItem("SECRETS"));
+          this.setSecrets(localStorage.getItem(SECRETS_SAVE_KEY));
           this.initViewIds();
+
+          this.$watch("secrets", (value) => {
+            const v = ++version;
+
+            setTimeout(() => {
+              if (v !== version) return;
+
+              localStorage.setItem(SECRETS_SAVE_KEY, JSON.stringify(value));
+            }, 250);
+          });
         },
         initViewIds(count = 1) {
           if (count > 10) throw new Error("failed initViewIds");
@@ -91,30 +154,39 @@
         setSecrets(value) {
           if (!value) return;
 
-          this.secrets = JSON.parse(value);
-          this.client_id = this.secrets.client_id;
-          this.scope = this.secrets.scope;
-          this.DeveloperKey = this.secrets.DeveloperKey;
-
-          localStorage.setItem("SECRETS", value);
+          Object.assign(this, JSON.parse(value));
         },
         login() {
+          const state = {
+            client_id: this.secrets.client_id,
+            scope: this.secrets.scope,
+          };
+
+          if (!validate(state)) return;
+
           // Replace with your client ID and required scopes.
           google.accounts.oauth2
             .initTokenClient({
-              client_id: this.secrets.client_id,
-              scope: this.secrets.scope,
+              ...state,
               callback: (token) => ((this.token = token), console.log(token)),
             })
             .requestAccessToken();
         },
 
         showPicker() {
+          if (
+            !validate({
+              DeveloperKey: this.secrets.DeveloperKey,
+              viewId: this.secrets.viewId,
+            })
+          )
+            return;
+
           // Replace with your API key and App ID.
           const picker = new google.picker.PickerBuilder()
             .addView(this.viewId)
             .setOAuthToken(this.token.access_token)
-            .setDeveloperKey(this.secrets.DeveloperKey)
+            .setDeveloperKey(this.DeveloperKey)
             .setCallback(console.log)
             .build();
 
